@@ -74,7 +74,12 @@ int play_write(const void *data, size_t len)
 void play_close(int drain)
 {
     if (!play) return;
-    if (drain) MixerDrain(play); else MixerFlush(play);
+    if (drain) {
+        MixerDrain(play);
+        for (int i = 0; i < 200 && MixerGetNumBytes(play) > 0; i++)
+            usleep(50000);
+        usleep(200000);
+    } else MixerFlush(play);
     MixerClose(play);
     play = NULL;
 }
