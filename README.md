@@ -19,7 +19,7 @@ resolve. Both Dots at home, "Echo Dot Mancave" and "Echo Dot 2", run this build.
 
 **Where:** the PC is `pve1` (the Echo plugs into its USB port), logged in as **`marc`, not root**:
 `ssh marc@pve1`, then `cd ~/echo-dot-codex`. Already set up there: `adb`, `fastboot`, `pyusb`, `7z`, the udev rule, and the
-three downloads in `~/Downloads` (`amonet-biscuit-v2.0.1.zip`, `boot-root.zip`, the Fire OS 6574.1 `.bin` firmware;
+three downloads in `~/echo-dot-codex/Downloads/` (`setup.sh` looks there first; kept out of git on purpose: Amazon's firmware is proprietary and over GitHub's 100 MB limit, so back that folder up yourself: `amonet-biscuit-v2.0.1.zip`, `boot-root.zip`, the Fire OS 6574.1 `.bin` firmware;
 sources are in [devices/biscuit/README.md](devices/biscuit/README.md#unlock-public-from-r0rt1z2) if they ever vanish).
 
 1. **Choose the Wi-Fi.** Edit `secrets/wifi.conf` (git-ignored): line 1 the network name, line 2 the password, exactly as

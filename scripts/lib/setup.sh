@@ -256,7 +256,7 @@ declare -A _seen
 _good() { [ -z "$2" ] || [ "$(sha256sum < "$1" | cut -c1-64)" = "$2" ]; }
 _pickup() {
     local f=$1 sum=$2 name=${1##*/} c sig
-    for c in "$HOME/Downloads/$name" "./$name"; do
+    for c in "$HOME/Downloads/$name" "./Downloads/$name" "./$name"; do
         [ -s "$c" ] && [ ! -e "$c.part" ] && [ ! -e "$c.crdownload" ] || continue
         sig=$(stat -c %s.%Y "$c"); [ "${_seen[$c]}" = "$sig" ] && continue
         _seen[$c]=$sig

@@ -17,3 +17,5 @@ secrets/
 xda_post.md
 __pycache__/
 *.pyc
+# the unlock files kept beside the checkout (Amazon firmware, amonet): local only, setup.sh picks them up from here
+Downloads/
