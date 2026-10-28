@@ -10,6 +10,41 @@
 >
 > **Read what you run. No warranty, no support, your risk.**
 
+## Quick start: adding another Echo Dot 2 at home (marcnl fork)
+
+This fork adds **https:// replies** (Home Assistant sends spoken replies as `https://…ui.nabu.casa/…` links, which upstream
+could not play, so the Echo heard you but stayed silent) and two boot fixes for networks without internet time or DNS
+(an IoT VLAN): the clock is set from the gateway's HTTP `Date` header, and `netmgrd` is restarted if names do not
+resolve. Both Dots at home, "Echo Dot Mancave" and "Echo Dot 2", run this build.
+
+**Where:** the PC is `pve1` (the Echo plugs into its USB port), logged in as **`marc`, not root**:
+`ssh marc@pve1`, then `cd ~/echo-dot-codex`. Already set up there: `adb`, `fastboot`, `pyusb`, `7z`, the udev rule, and the
+three downloads in `~/Downloads` (`amonet-biscuit-v2.0.1.zip`, `boot-root.zip`, the Fire OS 6574.1 `.bin` firmware;
+sources are in [devices/biscuit/README.md](devices/biscuit/README.md#unlock-public-from-r0rt1z2) if they ever vanish).
+
+1. **Choose the Wi-Fi.** Edit `secrets/wifi.conf` (git-ignored): line 1 the network name, line 2 the password, exactly as
+   typed (`!` and other symbols are part of the password). Home Assistant must be reachable from that network.
+2. **Plug the Echo into pve1** with a micro-USB *data* cable. Leave its power adapter out.
+3. **Run the guided setup:** `scripts/setup.sh biscuit` and type `yes` (it wipes the Echo). It does everything below by
+   itself and stops only when you must act; Ctrl-C and rerun resumes where it stopped.
+4. **When it asks: boot mode.** Hold the **action button** (the dot), plug the power in, and keep holding until the ring
+   is **green**. Then type `YES` when amonet asks. **Do not interrupt it from then on, it can brick the Echo.** The Echo
+   ends up in TWRP (white light), the script flashes the firmware to both slots and roots it.
+5. **Name it.** The script asks for a name (e.g. `Echo Dot Kitchen`); every Echo needs its own.
+6. **Wait for the Wi-Fi and install steps.** The script locks the Echo off from the internet *before* it joins Wi-Fi,
+   joins, installs the satellite and reboots. **Do not restart the Echo yourself between those steps.**
+7. **In Home Assistant:** Settings, Devices, the new ESPHome device is discovered, add it (no key needed). Pick the
+   Assist pipeline, and tick **"Allow the device to perform Home Assistant actions"** in its options.
+8. **Check:** say "Alexa", ask something, and you should hear the answer. Give the Echo a **DHCP reservation** in UniFi.
+
+If the answer stays silent, run on pve1: `ANDROID_SERIAL=<serial> adb shell tail -30 /data/local/hassmic/boot.log`
+(`adb devices` shows the serial; adb over Wi-Fi is closed, so the Echo must be on USB). `tls: handshake … verify result 9`
+means the clock is still wrong, `net: cannot resolve` means DNS; both fix themselves within a minute of joining Wi-Fi.
+Two Echos at once: set `ANDROID_SERIAL` for every adb/script command.
+
+To push a changed `main.sh` or `hassmic` to an Echo that is already installed: `ANDROID_SERIAL=<serial> scripts/install-system.sh "<same name>"`
+(reboots it).
+
 Turns an **Amazon Echo** into a **Home Assistant voice satellite** that never talks to Amazon. Works on the Echo Dot 3
 (2018), the Echo Dot 2 and the Echo 2; see [Supported Echos](#supported-echos).
 

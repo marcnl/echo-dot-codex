@@ -7,8 +7,8 @@
 
 XDA=https://xdaforums.com/t/unlock-root-twrp-unbrick-amazon-echo-dot-2nd-gen-2016-biscuit.4761416/
 FTVDB=https://ftvdb.com/echo/firmware/com.amazon.biscuit.android.os/8ca06ee4ef2806c974d2944b7fadd543-13222531716-fire-os-6574-1-ns65741-8146-2026-09-17/
-AMONET=amonet-biscuit-v2.0.0.zip
-AMONET_SHA256=98297293701082bc7272efe077f941c56fc7b6e1f27ef6f2e93b6e4c6fc7b62d
+AMONET=amonet-biscuit-v2.0.1.zip           # the XDA thread now offers v2.0.1 (v2.0.0 is gone); unlock tested with it, 2026-10
+AMONET_SHA256=ea9cada067783a0d83f025bdd669fd5689148f555054475c7c70c634c542f3b5
 BOOTROOT=boot-root.zip                      # from this model's XDA thread; byte-identical to donut's
 BOOTROOT_SHA256=de49cc88b27a8e77cf97cf0156bee50e4ddc0e116c41aaede06b494e38397be0
 NDK=toolchain/android-ndk-r21e
@@ -127,7 +127,7 @@ step_build() {
     # the firmware's libraries are only needed to link against
     if [ "$BUILD_MODE" != prebuilt ] && [ ! -d $FW/rootfs/system/lib ]; then
         task "Unpacking the firmware" sh -c "unzip -o -q $FW/$FIRMWARE_FILE payload.bin -d $FW &&
-            python3 tools/payload_dump.py $FW/payload.bin $FW/images && 7z x -o$FW/rootfs -y $FW/images/system.img" || return 1
+            python3 tools/payload_dump.py $FW/payload.bin $FW/images && 7z x -snld -o$FW/rootfs -y $FW/images/system.img" || return 1
     fi
     [ -d $FW/boot-root ] || task "Unpacking boot-root" unzip -q $FW/$BOOTROOT -d $FW/boot-root || return 1
     if [ "$BUILD_MODE" = prebuilt ]; then task "Downloading the release build of this commit" build_binaries || return 1
