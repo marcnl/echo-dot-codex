@@ -59,6 +59,7 @@
 #include "update.h"
 #include "wifimotion.h"
 #include "net.h"
+#include "tls.h"
 #include "netio.h"
 #define MINIMP3_IMPLEMENTATION
 #define MINIMP3_NO_SIMD                 /* plain C: same code on the PC and on the armv7 build */
@@ -690,37 +691,40 @@ static void send_mp_state(void)         /* lock held */
     send_state(MEDIA_PLAYER_STATE, &b);
 }
 
-static int http_get_host(const char *host, const char *port, const char *path)
+static int http_get_host(const char *host, const char *port, const char *path, int tls)
 {
     char req[1400], line[1024]; int v6 = strchr(host, ':') != NULL;
     int fd = net_connect(host, port, 4);
     if (fd < 0) return -1;
     struct timeval tv = { 15, 0 };
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);     /* TTS may still be rendering */
+    if (tls && (fd = tls_wrap(fd, host)) < 0) return -1;         /* https://: the stream below is the decrypted one */
+    int dflt = !strcmp(port, tls ? "443" : "80");
     /* HTTP/1.0: no chunked transfer encoding, the body ends with the connection */
-    int n = snprintf(req, sizeof req, "GET %s HTTP/1.0\r\nHost: %s%s%s:%s\r\nUser-Agent: hassmic/" VERSION "\r\n\r\n",
-                     path, v6 ? "[" : "", host, v6 ? "]" : "", port);
+    int n = snprintf(req, sizeof req, "GET %s HTTP/1.0\r\nHost: %s%s%s%s%s\r\nUser-Agent: hassmic/" VERSION "\r\n\r\n",
+                     path, v6 ? "[" : "", host, v6 ? "]" : "", dflt ? "" : ":", dflt ? "" : port);
     if (write_all(fd, req, n) < 0) { close(fd); return -1; }
     for (int first = 1;; first = 0) {                   /* header lines, byte by byte: they are short */
         size_t i = 0; char c;
         while (i < sizeof line - 1 && read(fd, &c, 1) == 1 && c != '\n') line[i++] = c;
         line[i] = 0;
-        if (first && !strstr(line, " 200")) { fprintf(stderr, "media: http://%s:%s%s -> %s\n", host, port, path, line); close(fd); return -1; }
+        if (first && !strstr(line, " 200")) { fprintf(stderr, "media: http%s://%s:%s%s -> %s\n", tls ? "s" : "", host, port, path, line); close(fd); return -1; }
         if (i <= 1) return fd;                          /* "\r": end of headers */
     }
 }
 
 static int http_get(const char *url)    /* returns a socket positioned at the body, or -1 */
 {
-    char host[256], port[8] = "80"; const char *p = url, *path;
-    if (strncmp(p, "http://", 7)) { fprintf(stderr, "media: only http:// is supported: %s\n", url); return -1; }
-    p += 7; path = strchr(p, '/');
+    char host[256], port[8] = "80"; const char *p = url, *path; int tls = !strncmp(p, "https://", 8);
+    if (!tls && strncmp(p, "http://", 7)) { fprintf(stderr, "media: only http:// and https:// are supported: %s\n", url); return -1; }
+    if (tls) snprintf(port, sizeof port, "443");
+    p += tls ? 8 : 7; path = strchr(p, '/');
     snprintf(host, sizeof host, "%.*s", (int)(path ? path - p : (long)strlen(p)), p);
     char *colon = strrchr(host, ':'), *close_br = strrchr(host, ']');
     if (colon && close_br > colon) colon = NULL;                            /* "[fe80::1]": the colons are the address */
     if (colon) { *colon = 0; snprintf(port, sizeof port, "%s", colon + 1); }
     if (host[0] == '[' && (close_br = strchr(host, ']'))) { *close_br = 0; memmove(host, host + 1, strlen(host)); }
-    return http_get_host(host, port, path ? path : "/");
+    return http_get_host(host, port, path ? path : "/", tls);
 }
 
 static int tts_begin(struct media_job *job, unsigned rate, unsigned ch)    /* -1: cancelled, the reply must not play */

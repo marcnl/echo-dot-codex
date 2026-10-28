@@ -80,6 +80,44 @@ kmod() {
     else echo "kmod: $KMOD not loaded, not tried again until reboot: $out"; KMOD=; fi
 }
 
+# The Echo has no battery-backed clock and the egress lock keeps it from any internet time server, so it boots in 2010 and
+# every https:// certificate (hassmic's reply and music downloads) then looks "not yet valid".  Stock Alexa set the time over
+# the internet.  Here: while the year is before 2025, take the time from the Date header of a plain HTTP answer on the LAN,
+# from the DHCP gateway or one of the DHCP DNS servers (any router or AdGuard web page answers; the exact second is not
+# needed, a certificate only has to fall inside its validity).
+timefix() {
+    [ "$(date +%Y)" -ge 2025 ] && return 0
+    for h in $(getprop dhcp.$WLAN.gateway) $(getprop dhcp.$WLAN.dns1) $(getprop dhcp.$WLAN.dns2); do
+        d=$(printf 'HEAD / HTTP/1.0\r\n\r\n' | toybox nc -w3 $h 80 2>/dev/null | tr -d '\r' |
+            sed -n 's/^[Dd]ate: [A-Za-z]*, \([0-9]*\) \([A-Za-z]*\) \([0-9]*\) \([0-9]*\):\([0-9]*\):\([0-9]*\) GMT.*/\1 \2 \3 \4 \5 \6/p' | head -1)
+        [ -n "$d" ] || continue
+        read dd mon yy hh mi ss <<EOF
+$d
+EOF
+        case $mon in Jan) mm=01;; Feb) mm=02;; Mar) mm=03;; Apr) mm=04;; May) mm=05;; Jun) mm=06;; Jul) mm=07;;
+            Aug) mm=08;; Sep) mm=09;; Oct) mm=10;; Nov) mm=11;; Dec) mm=12;; *) continue;; esac
+        [ ${#dd} -eq 1 ] && dd=0$dd
+        date -u "$mm$dd$hh$mi$yy.$ss" > /dev/null 2>&1 || continue
+        hwclock -w > /dev/null 2>&1
+        echo "netwatch: clock was before 2025 (no time source); set to $(date -u '+%Y-%m-%d %H:%M:%S') UTC from $h"
+        return 0
+    done
+}
+
+# netmgrd hands the DHCP lease's DNS servers to the system resolver (dnsproxyd).  On some networks it has set an empty
+# list by the time the lease arrives (seen on an Echo Dot 2 on a separate IoT VLAN: every name lookup failed, so replies from
+# an https:// or host name URL stayed silent), and only a restart makes it read the lease again.  So: lease has DNS servers
+# but a public name does not resolve -> restart netmgrd, at most 3 times per boot.
+dnsfix_tries=0
+dnsfix() {
+    [ $dnsfix_tries -lt 3 ] || return 0
+    [ -n "$(getprop dhcp.$WLAN.dns1)" ] || return 0
+    case $(ping -c1 -W1 a.root-servers.net 2>&1) in *"unknown host"*) ;; *) return 0;; esac
+    dnsfix_tries=$((dnsfix_tries + 1))
+    stop netmgrd; sleep 2; start netmgrd; sleep 8
+    echo "netwatch: DNS servers in the lease but names do not resolve, netmgrd restarted ($dnsfix_tries)"
+}
+
 netwatch() {
     miss=0
     while :; do
@@ -88,6 +126,8 @@ netwatch() {
         if ifconfig $WLAN 2>/dev/null | grep -q "inet addr"; then
             miss=0
             kmod
+            timefix
+            dnsfix
             [ "$(getprop init.svc.$WIFI_SERVICE)" = running ] && { sleep 5; stop $WIFI_SERVICE; echo "netwatch: link up, $WIFI_SERVICE stopped"; }
         else
             miss=$((miss + 1))
