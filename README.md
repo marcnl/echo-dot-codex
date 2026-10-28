@@ -137,6 +137,8 @@ Details:
   - SBC only (every speaker has it), one speaker at a time. ESPHome only for setting it up.
 - **Bluetooth**: the proxy works like an ESPHome `bluetooth_proxy` with `active: true`, up to 3 connections, "Just Works"
   pairing only. While a phone plays, the proxy stops scanning: the radio cannot do both without the music stuttering.
+  Tested on two Echo Dot 2 (2026-10): a BLE LED strip near them is switched through the Dots, with the ESP32 Bluetooth proxies turned
+  off in Home Assistant (one short session; longer-term reliability with many BLE devices is not measured).
 - **Settings in Home Assistant**: "Mic level" (how loud speech reaches the voice assistant, -35 to -15 dBFS, default
   -26; the Echo adjusts its gain to it), "Noise reduction" (off by default; low, medium, high: RNNoise on what the voice
   assistant gets takes the background down by up to 6, 9 or 12 dB), mute switch, "Do not disturb"
