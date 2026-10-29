@@ -2,6 +2,11 @@
 
 What changed for people using the Echo, newest first. Details and measurements are in [PLAN.md](PLAN.md).
 
+## 2026-10-29
+
+- **Fork housekeeping (marcnl):** five Echo Dot 2 now run this build. The working checkout on pve1 is gone; the Amazon downloads
+  and `secrets/` (including `update.key`) are kept on vnas, and the README quick start now starts from a fresh clone.
+
 ## 2026-10-04
 
 - **Cancel a request with the action button**, as with the center button of a Voice PE: pressed while Home Assistant is

@@ -15,14 +15,32 @@
 This fork adds **https:// replies** (Home Assistant sends spoken replies as `https://…ui.nabu.casa/…` links, which upstream
 could not play, so the Echo heard you but stayed silent) and two boot fixes for networks without internet time or DNS
 (an IoT VLAN): the clock is set from the gateway's HTTP `Date` header, and `netmgrd` is restarted if names do not
-resolve. Both Dots at home, "Echo Dot Mancave" and "Echo Dot 2", run this build.
+resolve. Both Dots at home, "Echo Dot Mancave" and "Echo Dot 2", and three more since, run this build.
 
-**Where:** the PC is `pve1` (the Echo plugs into its USB port), logged in as **`marc`, not root**:
-`ssh marc@pve1`, then `cd ~/echo-dot-codex`. Already set up there: `adb`, `fastboot`, `pyusb`, `7z`, the udev rule, and the
-three downloads in `~/echo-dot-codex/Downloads/` (`setup.sh` looks there first; kept out of git on purpose: Amazon's firmware is proprietary and over GitHub's 100 MB limit, so back that folder up yourself: `amonet-biscuit-v2.0.1.zip`, `boot-root.zip`, the Fire OS 6574.1 `.bin` firmware;
-sources are in [devices/biscuit/README.md](devices/biscuit/README.md#unlock-public-from-r0rt1z2) if they ever vanish).
+**Where:** the PC is `pve1` (the Echo plugs into its USB port), logged in as **`marc`, not root**. The checkout there was
+deleted once the five Dots worked, so a new Echo starts from a fresh clone. Everything that is not in git is kept on vnas,
+in `/volume3/software/Systems/Alexa/` (`ssh vnas`):
 
-1. **Choose the Wi-Fi.** Edit `secrets/wifi.conf` (git-ignored): line 1 the network name, line 2 the password, exactly as
+- `amonet-biscuit-v2.0.1.zip`, `boot-root.zip` and the Fire OS 6574.1 `update-kindle-biscuit_puffin-NS65741_user_8146_0013222531716.bin`:
+  the three downloads (kept out of git on purpose: Amazon's firmware is proprietary and over GitHub's 100 MB limit; sources are in
+  [devices/biscuit/README.md](devices/biscuit/README.md#unlock-public-from-r0rt1z2) if they ever vanish).
+- `secrets/`: `update.key`, `update.pub`, `wifi.conf`, `wifi.conf.dot1`. **Keep `update.key`**: the Dots already installed only
+  accept pushed updates signed with it. `wifi.conf.dot1` is the same two-line format as `wifi.conf`.
+
+Set up the PC side once:
+
+```
+ssh marc@pve1
+git clone https://github.com/marcnl/echo-dot-codex.git && cd echo-dot-codex
+mkdir -p Downloads secrets
+ssh vnas "cd /volume3/software/Systems/Alexa && tar cf - *.zip *.bin secrets" | tar xf -   # then move the zips and .bin into Downloads/
+```
+
+Put the three downloads in `Downloads/` and the four files in `secrets/` (mode 600; `setup.sh` looks in `./Downloads` and
+`~/Downloads` first). pve1 needs `adb`, `fastboot`, `pyusb`, `7z` and the udev rule for the Echo's USB ids; the guided setup
+checks for them and downloads the toolchain itself (about 5 GB unpacked, git-ignored).
+
+1. **Choose the Wi-Fi.** Check `secrets/wifi.conf` (restored from vnas, git-ignored): line 1 the network name, line 2 the password, exactly as
    typed (`!` and other symbols are part of the password). Home Assistant must be reachable from that network.
 2. **Plug the Echo into pve1** with a micro-USB *data* cable. Leave its power adapter out.
 3. **Run the guided setup:** `scripts/setup.sh biscuit` and type `yes` (it wipes the Echo). It does everything below by
